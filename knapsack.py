@@ -126,7 +126,7 @@ def algo_runtime(algorithm, items):
 def experimentParameters():
     i = 100
     data = []
-    while i <= 1000:
+    while i <= 100000:
         items = randomItemGen(i)
         
         time = []
@@ -182,7 +182,7 @@ def experimentParameters():
             i += 100
         elif i < 10000:
             i += 1000
-        elif i < 100000:
+        elif i <= 100000:
             i += 10000
 
     print("Bottom-up and Memoized Dynamic Programming Knapsack")
