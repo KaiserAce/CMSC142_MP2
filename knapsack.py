@@ -1,9 +1,12 @@
 import random
-import time
+from timeit import default_timer as timer
 import sys
 import numpy as np 
 
 sys.setrecursionlimit(100000000)
+
+recomputed = 0
+retrieved = 0
 
 def randomItemGen(n):
     items = []
@@ -27,16 +30,25 @@ def DPMFKnapsack(items, WEIGHT=1000):
         V[0][i] = 0
     for j in range(len(items)+1):
         V[j][0] = 0
+    global recomputed
+    global retrieved
+    recomputed = 0
+    retrieved = 0
     def recurse(i, j):
+        global recomputed
+        global retrieved
         if V[i][j] < 0:
             if j < items[i-1][0]:
                 value = recurse(i-1, j)
             else:
                 value = max(recurse(i-1, j), items[i-1][1] + recurse(i-1, j - items[i-1][0]))
             V[i][j] = value
+            recomputed += 1
+        else:
+            retrieved += 1
         return V[i][j]
     recurse(len(items), WEIGHT)
-    return V[len(items)][WEIGHT], V
+    return V[len(items)][WEIGHT], V, recomputed, retrieved
 
 def DPKnapsackBacktracking(items, DP, WEIGHT=1000):
     included = []
@@ -56,7 +68,7 @@ def LVGreedyKnapsack(items, WEIGHT=1000):
         if arr[0][0] <= WEIGHT:
             WEIGHT -= arr[0][0]
             total_value += arr[0][1]
-            included.append(arr)
+            included.append((arr[0], arr[1]))
             arr.pop(0)
         else:
             arr.pop(0)
@@ -71,7 +83,7 @@ def SWGreedyKnapsack(items, WEIGHT = 1000):
         if arr[0][0] <= WEIGHT:
             WEIGHT -= arr[0][0]
             total_value += arr[0][1]
-            included.append(arr)
+            included.append((arr[0], arr[1]))
             arr.pop(0)
         else:
             arr.pop(0)
@@ -106,51 +118,180 @@ def validityChecker():
     print(VRGreedyKnapsack(items1, 5))
     
 def algo_runtime(algorithm, items):
-    start = time.time()
+    start = timer()
     result = algorithm(items)
-    end = time.time()
+    end = timer()
     return(end-start)* 10**3, result[0], result[1]
 
 def experimentParameters():
-    algorithms = [
-        ('DPKnapsack', DPKnapsack),
-        ('DPMFKnapsack', DPMFKnapsack),
-        ('LargestValueKnapsack',LVGreedyKnapsack),
-        ('SmallestWeightKnapsack', SWGreedyKnapsack),
-        ('ValueRatioKnapsack', VRGreedyKnapsack)
-    ]
-    
-    num_runs = 3
-    results = {algo[0]: [] for algo in algorithms}
-
     i = 100
-    while i <= 100000:
-        print(f"\nTest for {i} items...")
+    data = []
+    while i <= 1000:
         items = randomItemGen(i)
-        print(f"{'Algorithm':<30}{'Computed Value':<20}{'Trial 1':<20}{'Trial 2':<20}{'Trial 3':<20}{'Ave. Runtime':<20}")
-        for name, algorithm in algorithms:
-            times = []
-            for _ in range(num_runs):
-                result = algo_runtime(algorithm, items)
-                run_time = result[0]
-                times.append(run_time)
-                
-            avg_runtime = np.mean(times)
-            results[name].append(avg_runtime)
         
-            print(f"{name:<30}{result[1]:<20}{times[0]:<20}{times[1]:<20}{times[2]:<20}{avg_runtime:<20} ")
-                
-        i = i * 10 
-    
-    print("\nResults (ms):")
-    print(f"{'Algorithm':<20}", end="")
-    print("100       1000      10000     100000")
-    for name in algorithms:
-        avg_times = results[name[0]]
-        print(f"{name[0]:<20}", end="")
-        for time in avg_times:
-            print(f"{time:<10.2f}", end="")
-        print()
+        time = []
+        for _ in range(3):
+            start = timer()
+            result = DPKnapsack(items)
+            end = timer()
+            time.append((end-start) * 10**3)
+        data.append((i, 'DPKnapsack', result[0], time[0], time[1], time[2], np.average(time)))
+        DP = result[1]
+
+        time = []
+        for _ in range(3):
+            start = timer()
+            result = DPMFKnapsack(items)
+            end = timer()
+            time.append((end-start) * 10**3)
+        data.append((i, 'DPMFKnapsack', result[0], time[0], time[1], time[2], np.average(time), result[2], result[3]))
+
+        time = []
+        for _ in range(3):
+            start = timer()
+            result = DPKnapsackBacktracking(items, DP)
+            end = timer()
+            time.append((end-start) * 10**3)
+        data.append((i, 'DPKnapsackBacktracking', 'N/A', time[0], time[1], time[2], np.average(time), result[0]))
+
+        time = []
+        for _ in range(3):
+            start = timer()
+            result = LVGreedyKnapsack(items)
+            end = timer()
+            time.append((end-start) * 10**3)
+        data.append((i, 'LargestValueKnapsack', result[0], time[0], time[1], time[2], np.average(time), result[1]))
+
+        time = []
+        for _ in range(3):
+            start = timer()
+            result = SWGreedyKnapsack(items)
+            end = timer()
+            time.append((end-start) * 10**3)
+        data.append((i, 'SmallestWeightKnapsack', result[0], time[0], time[1], time[2], np.average(time), result[1]))
+
+        time = []
+        for _ in range(3):
+            start = timer()
+            result = VRGreedyKnapsack(items)
+            end = timer()
+            time.append((end-start) * 10**3)
+        data.append((i, 'ValueRatioKnapsack', result[0], time[0], time[1], time[2], np.average(time), result[1]))
+
+        if i < 1000:
+            i += 100
+        elif i < 10000:
+            i += 1000
+        elif i < 100000:
+            i += 10000
+
+    print("Bottom-up and Memoized Dynamic Programming Knapsack")
+    print(f"{'i':<10}{'Bottom-up (ms)':<30}{'Memoized (ms)':<30}")
+    data1 = []
+    data2 = []
+    for i in data:
+        if i[1] == 'DPKnapsack':
+            data1.append((i[0], i[6]))
+
+        elif i[1] == 'DPMFKnapsack':
+            data2.append((i[0], i[6]))
+    while data1:
+        print(f"{data1[0][0]:<10}{data1[0][1]:<30}{data2[0][1]:<30}")
+        data1.pop(0)
+        data2.pop(0)
+
+    print()
+
+    print("Recomputations and Retrievals of Memoized Dynamic Programming")
+    print(f"{'i':<10}{'Recomputations':<20}{'Retrievals':<20}")
+    for i in data:
+        if i[1] == 'DPMFKnapsack':
+            print(f"{i[0]:<10}{i[7]:<20}{i[8]:<20}")
+
+    print()
+
+    print("Time Efficiency of Backtracking Algorithm for Dynamic Programming Knapsack")
+    print(f"{'i':<10}{'Trial 1 (ms)':<30}{'Trial 2 (ms)':<30}{'Trial 3 (ms)':<30}{'Ave. Runtime (ms)':<30}")
+    for i in data:
+        if i[1] == 'DPKnapsackBacktracking':
+            print(f"{i[0]:<10}{i[3]:<30}{i[4]:<30}{i[5]:<30}{i[6]:<30}")
+
+    print()
+    print("Computed Values of Greedy Algorithms for Knapsack Problem")
+    print(f"{'':<10}{'':<20}{'Largest Value First':<50}{'Smallest Weight First':<50}{'Greatest Value-Ratio First':<50}")
+    print(f"{'i':<10}{'Actual Max Value':<20}{'Computed Value':<15}{'Absolute Error':<15}{'Relative Err. (%)':<20}{'Computed Value':<15}{'Absolute Error':<15}{'Relative Err. (%)':<20}{'Computed Value':<15}{'Absolute Error':<15}{'Relative Err. (%)':<20}")
+    data1 = []
+    data2 = []
+    data3 = []
+    data4 = []
+    for i in data:
+        if i[1] == 'DPKnapsack':
+            data1.append((i[0], i[2]))
+        elif i[1] == 'LargestValueKnapsack':
+            data2.append(i[2])
+        elif i[1] == 'SmallestWeightKnapsack':
+            data3.append(i[2])
+        elif i[1] == 'ValueRatioKnapsack':
+            data4.append(i[2])
+    while data1:
+        print(f"{data1[0][0]:<10}{data1[0][1]:<20}{data2[0]:<15}{(data1[0][1]-data2[0]):<15}{((data1[0][1]-data2[0])/data1[0][1])*100:<20.5f}{data3[0]:<15}{(data1[0][1]-data3[0]):<15}{((data1[0][1]-data3[0])/data1[0][1])*100:<20.5f}{data4[0]:<15}{(data1[0][1]-data4[0]):<15}{((data1[0][1]-data4[0])/data1[0][1])*100:<20.5f}")
+        data1.pop(0)
+        data2.pop(0)
+        data3.pop(0)
+        data4.pop(0)
+
+    print()
+
+    print("Average runtimes of Algorithms (ms)")
+    print(f"{'i':<10}{'DPKnapsack':<30}{'DPMFKnapsack':<30}{'DPKnapsackBacktracking':<30}{'DPKnapsack + Backtracking':<30}{'DPMFKnapsack + Backtracking':<30}{'LVGreedyKnapsack':<30}{'SWGreedyKnapsack':<30}{'VRGreedyKnapsack':30}")
+    data1 = []
+    data2 = []
+    data3 = []
+    data4 = []
+    data5 = []
+    data6 = []
+    for i in data:
+        if i[1] == 'DPKnapsack':
+            data1.append((i[0], i[6]))
+        elif i[1] == 'DPMFKnapsack':
+            data2.append(i[6])
+        elif i[1] == 'DPKnapsackBacktracking':
+            data3.append(i[6])
+        elif i[1] == 'LargestValueKnapsack':
+            data4.append(i[6])
+        elif i[1] == 'SmallestWeightKnapsack':
+            data5.append(i[6])
+        elif i[1] == 'ValueRatioKnapsack':
+            data6.append(i[6])
+    while data1:
+        print(f"{data1[0][0]:<10}{data1[0][1]:<30}{data2[0]:<30}{data3[0]:<30}{data1[0][1]+data3[0]:<30}{data2[0]+data3[0]:<30}{data4[0]:<30}{data5[0]:<30}{data6[0]:<30}")
+        data1.pop(0)
+        data2.pop(0)
+        data3.pop(0)
+        data4.pop(0)
+        data5.pop(0)
+        data6.pop(0)
+
+    print()
+
+    print("Raw Data")
+    for i in data:
+        if i[1] == 'DPKnapsack':
+            print(f"i = {i[0]}; {i[1]}; Computed Value: {i[2]}; Trial 1: {i[3]}; Trial 2: {i[4]}; Trial 3: {i[5]}; Ave. Runtime: {i[6]}")
+        elif i[1] == 'DPMFKnapsack':
+            print(f"i = {i[0]}; {i[1]}; Computed Value: {i[2]}; Trial 1: {i[3]}; Trial 2: {i[4]}; Trial 3: {i[5]}; Ave. Runtime: {i[6]}; Recomputation: {i[7]}; Retrievals: {i[8]}")
+        elif i[1] == 'DPKnapsackBacktracking':
+            print(f"i = {i[0]}; {i[1]}; Computed Value: {i[2]}; Trial 1: {i[3]}; Trial 2: {i[4]}; Trial 3: {i[5]}; Ave. Runtime: {i[6]}")
+            print(f"Solution: {i[7]}")
+        elif i[1] == 'LargestValueKnapsack':
+            print(f"i = {i[0]}; {i[1]}; Computed Value: {i[2]}; Trial 1: {i[3]}; Trial 2: {i[4]}; Trial 3: {i[5]}; Ave. Runtime: {i[6]}")
+            print(f"Solution: {i[7]}")
+        elif i[1] == 'SmallestWeightKnapsack':
+            print(f"i = {i[0]}; {i[1]}; Computed Value: {i[2]}; Trial 1: {i[3]}; Trial 2: {i[4]}; Trial 3: {i[5]}; Ave. Runtime: {i[6]}")
+            print(f"Solution: {i[7]}")
+        elif i[1] == 'ValueRatioKnapsack':
+            print(f"i = {i[0]}; {i[1]}; Computed Value: {i[2]}; Trial 1: {i[3]}; Trial 2: {i[4]}; Trial 3: {i[5]}; Ave. Runtime: {i[6]}")
+            print(f"Solution: {i[7]}")
         
-validityChecker()
+# validityChecker()
 experimentParameters()
