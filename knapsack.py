@@ -152,7 +152,7 @@ def experimentParameters():
             result = DPKnapsackBacktracking(items, DP)
             end = timer()
             time.append((end-start) * 10**3)
-        data.append((i, 'DPKnapsackBacktracking', 'N/A', time[0], time[1], time[2], np.average(time), result[0]))
+        data.append((i, 'DPKnapsackBacktracking', 'N/A', time[0], time[1], time[2], np.average(time), result))
 
         time = []
         for _ in range(3):
@@ -293,5 +293,5 @@ def experimentParameters():
             print(f"i = {i[0]}; {i[1]}; Computed Value: {i[2]}; Trial 1: {i[3]}; Trial 2: {i[4]}; Trial 3: {i[5]}; Ave. Runtime: {i[6]}")
             print(f"Solution: {i[7]}")
         
-# validityChecker()
-experimentParameters()
+validityChecker()
+# experimentParameters()
