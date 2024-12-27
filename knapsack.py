@@ -293,5 +293,5 @@ def experimentParameters():
             print(f"i = {i[0]}; {i[1]}; Computed Value: {i[2]}; Trial 1: {i[3]}; Trial 2: {i[4]}; Trial 3: {i[5]}; Ave. Runtime: {i[6]}")
             print(f"Solution: {i[7]}")
         
-validityChecker()
-# experimentParameters()
+# validityChecker()
+experimentParameters()
